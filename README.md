@@ -222,6 +222,9 @@ Para este projeto simples, o custo é extremamente baixo e proporcional ao núme
 - Estrutura de eventos do HTTP API v2
     
 - Uso de Outputs no CloudFormation
+
+### Troubleshooting
+“Durante testes, alguns API clients geraram 403 do CloudFront após POST. Validado que a infra estava correta ao testar com curl forçando HTTP/1.1 e removendo Expect: 100-continue.”
     
 
 ---
@@ -231,5 +234,5 @@ Foi criada uma API Serverless completa utilizando apenas CloudFormation, sem con
 
 # Próximas etapas (TODO)
 
-Implementar o API Proxy para ver a diferença entre ele e o API Gateway;
-Empacotar o código lambda (zip) e armazenar no S3, e referenciar o bucket e key no cloudformation, invés de manter o código inline.
+Implementar o API Proxy para ver a diferença entre ele e o API Gateway (OK)
+Empacotar o código lambda (zip) e armazenar no S3, e referenciar o bucket e key no cloudformation, invés de manter o código inline (OK)
