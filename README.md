@@ -229,3 +229,7 @@ Para este projeto simples, o custo é extremamente baixo e proporcional ao núme
 
 Foi criada uma API Serverless completa utilizando apenas CloudFormation, sem configuração manual de recursos, seguindo boas práticas de Infraestrutura como Código.
 
+# Próximas etapas (TODO)
+
+Implementar o API Proxy para ver a diferença entre ele e o API Gateway;
+Empacotar o código lambda (zip) e armazenar no S3, e referenciar o bucket e key no cloudformation, invés de manter o código inline.
