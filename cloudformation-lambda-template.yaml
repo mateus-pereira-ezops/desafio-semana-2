@@ -24,17 +24,8 @@ Resources:
       Handler: index.lambda_handler
       Role: !GetAtt HelloLambdaRole.Arn
       Code:
-        ZipFile: |
-          import json
-          def lambda_handler(event, context):
-              query = event.get("queryStringParameters") or {}
-              name = query.get("name", "world")
-              response = {"message": f"Hello, {name}!"}
-              return {
-                  "statusCode": 200,
-                  "headers": {"Content-Type": "application/json"},
-                  "body": json.dumps(response)
-              }
+        S3Bucket: mateus-pereira-lambda-artifacts
+        S3Key: index.zip
 
   HelloApi:
     Type: AWS::ApiGatewayV2::Api
@@ -47,14 +38,16 @@ Resources:
     Properties:
       ApiId: !Ref HelloApi
       IntegrationType: AWS_PROXY
-      IntegrationUri: !GetAtt HelloLambda.Arn
       PayloadFormatVersion: "2.0"
+      IntegrationUri: !Sub
+        - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+        - { LambdaArn: !GetAtt HelloLambda.Arn }
 
   HelloRoute:
     Type: AWS::ApiGatewayV2::Route
     Properties:
       ApiId: !Ref HelloApi
-      RouteKey: "GET /hello"
+      RouteKey: "ANY /hello"
       Target: !Sub "integrations/${HelloIntegration}"
 
   HelloStage:
