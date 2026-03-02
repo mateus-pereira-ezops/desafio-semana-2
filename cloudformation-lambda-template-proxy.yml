@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: REST API (v1) Proxy {proxy+} with Lambda (code from S3 zip) - Mateus Pereira
+
+Parameters:
+  LambdaCodeS3Bucket:
+    Type: String
+    Default: mateus-pereira-lambda-artifacts
+    Description: S3 bucket that stores the Lambda zip
+  LambdaCodeS3Key:
+    Type: String
+    Default: index.zip
+    Description: S3 key (object path) to the Lambda zip
+
+Resources:
+  HelloLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  HelloLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.13
+      Handler: index.lambda_handler
+      Role: !GetAtt HelloLambdaRole.Arn
+      Code:
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref LambdaCodeS3Key
+      Tags:
+        - Key: Owner
+          Value: mateus-pereira
+        - Key: Project
+          Value: desafio-semana-2
+
+  ProxyRestApiMateusPereira:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: API-Proxy-Mateus-Pereira
+      Description: "REST API v1 proxy ANY / and ANY /{proxy+} -> hello-lambda-iac-mateus-pereira"
+
+  ProxyResourceMateusPereira:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ProxyRestApiMateusPereira
+      ParentId: !GetAtt ProxyRestApiMateusPereira.RootResourceId
+      PathPart: "{proxy+}"
+
+  AnyRootMethodMateusPereira:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ProxyRestApiMateusPereira
+      ResourceId: !GetAtt ProxyRestApiMateusPereira.RootResourceId
+      HttpMethod: ANY
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${FnArn}/invocations
+          - { FnArn: !GetAtt HelloLambda.Arn }
+
+  AnyProxyMethodMateusPereira:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ProxyRestApiMateusPereira
+      ResourceId: !Ref ProxyResourceMateusPereira
+      HttpMethod: ANY
+      AuthorizationType: NONE
+      RequestParameters:
+        method.request.path.proxy: true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${FnArn}/invocations
+          - { FnArn: !GetAtt HelloLambda.Arn }
+        RequestParameters:
+          integration.request.path.proxy: method.request.path.proxy
+
+  ApiDeploymentMateusPereira:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - AnyRootMethodMateusPereira
+      - AnyProxyMethodMateusPereira
+    Properties:
+      RestApiId: !Ref ProxyRestApiMateusPereira
+
+  ApiStageMateusPereira:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId: !Ref ProxyRestApiMateusPereira
+      DeploymentId: !Ref ApiDeploymentMateusPereira
+      StageName: prod
+
+  LambdaPermissionMateusPereira:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref HelloLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ProxyRestApiMateusPereira}/*/*/*"
+
+Outputs:
+  InvokeBaseUrl:
+    Description: Base invoke URL (REST API v1)
+    Value: !Sub "https://${ProxyRestApiMateusPereira}.execute-api.${AWS::Region}.amazonaws.com/prod"
+
+  HelloExample:
+    Description: Example GET /hello?name=mateus
+    Value: !Sub "https://${ProxyRestApiMateusPereira}.execute-api.${AWS::Region}.amazonaws.com/prod/hello?name=mateus"
